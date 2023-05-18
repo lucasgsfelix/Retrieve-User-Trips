@@ -110,7 +110,7 @@ def read_chuncks(chuncks):
 
 pandas_df = pd.read_csv("yelp_enriched_dataset.csv", sep=';')
 
-pool = Pool(processes=100)
+pool = Pool(processes=32)
 
 mine_function = partial(mine_users_trips)
 
