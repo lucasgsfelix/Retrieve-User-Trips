@@ -82,17 +82,7 @@ complete_df = complete_df.rename(columns={'name_left': 'country_name'})
 
 complete_df = complete_df.set_index('country_name').join(country_df.set_index('country_name')).reset_index()
 
-pool = Pool(processes=100)
-
 pandas_df = complete_df.drop('geometry', axis=1)
-
-mine_function = partial(mine_users_trips)
-
-df_trips = pool.map(mine_function, pandas_df['user_id'].unique())
-
-df_trips = pd.concat(list(filter(lambda x: not isinstance(x, list), df_trips))).reset_index()
-
-df_trips.to_csv("users_trips.csv", sep=';', index=False)
 
 def define_user_object(user_id):
 
@@ -179,6 +169,17 @@ def read_chuncks(chuncks):
         break
     
     return chunck
+ 
+
+pool = Pool(processes=100)
+
+mine_function = partial(mine_users_trips)
+
+df_trips = pool.map(mine_function, pandas_df['user_id'].unique())
+
+df_trips = pd.concat(list(filter(lambda x: not isinstance(x, list), df_trips))).reset_index()
+
+df_trips.to_csv("users_trips.csv", sep=';', index=False)
 
 
 
