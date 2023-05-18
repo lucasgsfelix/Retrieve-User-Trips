@@ -2,8 +2,6 @@ import ast
 
 import pandas as pd
 
-import matplotlib.pyplot as plt
-
 from shapely.geometry import Point
 import geopandas as gpd
 from geopandas import GeoDataFrame
@@ -23,9 +21,9 @@ import re
 from functools import partial
 
 
-def define_user_object(complete_df, user_id):
+def define_user_object(user_id):
 
-    user_df = complete_df[complete_df['user_id'] == user_id]
+    user_df = pandas_df[pandas_df['user_id'] == user_id]
 
     users_checkins = []
 
@@ -88,10 +86,10 @@ def define_user_trips(user, user_df):
     return []
 
 
-def mine_users_trips(complete_df, user):
+def mine_users_trips(user):
 
     
-    user_obj, user_df = define_user_object(complete_df, user)
+    user_obj, user_df = define_user_object(user)
     
     user_trips = define_user_trips(user_obj, user_df)
 
@@ -112,11 +110,11 @@ def read_chuncks(chuncks):
 
 if __name__ == '__main__':
 
-    chuncks = pd.read_json("yelp_academic_dataset_review.json", lines=True)
+    df = pd.read_json("yelp_academic_dataset_review.json", lines=True)
 
     country_df = pd.read_csv("countries-continents.csv", sep=',')
 
-    df = read_chuncks(chuncks)
+    #df = read_chuncks(chuncks)
 
     df['text'] = df['text'].str.replace('\n', '')
 
@@ -128,9 +126,9 @@ if __name__ == '__main__':
     df = df.set_index('business_id').join(df_places.set_index('business_id')).reset_index()
 
     ## adicionando as informações do usuário
-    user_chuncks = pd.read_json("yelp_academic_dataset_user.json", lines=True)
+    df_users = pd.read_json("yelp_academic_dataset_user.json", lines=True)
 
-    df_users = read_chuncks(user_chuncks)
+    #df_users = read_chuncks(user_chuncks)
 
     df_users = df_users.rename(columns={'useful': 'user_useful',
                                         'funny': 'user_funny',
@@ -177,12 +175,13 @@ if __name__ == '__main__':
 
     pandas_df = complete_df.drop('geometry', axis=1)
 
-    mine_function = partial(mine_users_trips, pandas_df)
+    global pandas_df
+
+    mine_function = partial(mine_users_trips)
 
     df_trips = pool.map(mine_function, pandas_df['user_id'].unique())
 
     df_trips = pd.concat(list(filter(lambda x: not isinstance(x, list), df_trips))).reset_index()
 
     df_trips.to_csv("users_trips.csv", sep=';', index=False)
-
 
