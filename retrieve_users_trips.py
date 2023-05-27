@@ -88,10 +88,16 @@ def define_user_trips(user, user_df):
 
 def mine_users_trips(user):
 
+    try:
+        user_obj, user_df = define_user_object(user)
     
-    user_obj, user_df = define_user_object(user)
-    
-    user_trips = define_user_trips(user_obj, user_df)
+        user_trips = define_user_trips(user_obj, user_df)
+
+        del user_obj, user_df
+
+    except:
+
+        user_trips = []
 
     return user_trips
 
@@ -108,13 +114,31 @@ def read_chuncks(chuncks):
     return chunck
 
 
+import tqdm
+
 pandas_df = pd.read_csv("yelp_enriched_dataset.csv", sep=';')
 
-pool = Pool(processes=32)
+print("Quantidade de linhas antes do dropnat: ", len(pandas_df))
+
+pandas_df['date'] = pd.to_datetime(pandas_df['date'], errors='coerce')
+
+pandas_df = pandas_df.dropna(subset='date')
+
+print("Quantidade de linhas depois do dropnat: ", len(pandas_df))
+
+
+print("Processamento dos dados!")
+
+pool = Pool(processes=20)
 
 mine_function = partial(mine_users_trips)
 
-df_trips = pool.map(mine_function, pandas_df['user_id'].unique())
+df_trips = list(tqdm.tqdm(pool.imap(mine_function, pandas_df['user_id'].unique()), total=len(pandas_df['user_id'].unique())))
+
+
+pool.close()
+
+pool.join()
 
 df_trips = pd.concat(list(filter(lambda x: not isinstance(x, list), df_trips))).reset_index()
 
