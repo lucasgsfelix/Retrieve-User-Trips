@@ -19,6 +19,10 @@ from tripmining.model.user import User
 from multiprocessing import Pool
 import re
 from functools import partial
+import tqdm
+
+import os
+
 
 
 def define_user_object(user_id):
@@ -113,23 +117,11 @@ def read_chuncks(chuncks):
     
     return chunck
 
-
-import tqdm
-
-pandas_df = pd.read_csv("yelp_enriched_dataset.csv", sep=';')
-
-print("Quantidade de linhas antes do dropnat: ", len(pandas_df))
-
-pandas_df['date'] = pd.to_datetime(pandas_df['date'], errors='coerce')
-
-pandas_df = pandas_df.dropna(subset='date')
-
-print("Quantidade de linhas depois do dropnat: ", len(pandas_df))
-
+pandas_df = pd.read_csv("yelp_users_batches.csv", sep=';')
 
 print("Processamento dos dados!")
 
-pool = Pool(processes=20)
+pool = Pool(processes=40)
 
 mine_function = partial(mine_users_trips)
 
@@ -142,6 +134,12 @@ pool.join()
 
 df_trips = pd.concat(list(filter(lambda x: not isinstance(x, list), df_trips))).reset_index()
 
-df_trips.to_csv("users_trips.csv", sep=';', index=False)
+if 'user_trips.csv' in os.listdir("/"):
+
+    df_trips.to_csv("users_trips.csv", sep=';', index=False, mode='a', header=False)
+
+else:
+
+    df_trips.to_csv("users_trips.csv", sep=';', index=False, mode='w', header=True)
 
 
