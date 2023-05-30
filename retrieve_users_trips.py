@@ -25,79 +25,92 @@ import os
 
 
 
-def define_user_object(user_id):
-
-    user_df = pandas_df[pandas_df['user_id'] == user_id]
-
-    users_checkins = []
-
-    selected_columns = ['business_id', 'latitude', 'longitude', 'date', 'place_name', 'country-code']
-
-    for bis, lat, lon, date, place_name, code in user_df[selected_columns].values:
-
-        #latitude, longitude
-        coordinates_obj = model.coordinate.Coordinate(lat, lon)
-
-        location_obj = model.location.Location(place_name, coordinates_obj, code, name=place_name)
-
-        # user_id, cooridnates_obj, visitt_datetime
-        checkins = model.checkin.Checkin(user_id, location_obj, date)
-
-        users_checkins.append(checkins)
-
-    user = model.user.User(user_id, users_checkins, '') #  user_id, checkins_obj, dataset
-
-    return user, user_df
-
-
-def define_user_trips(user, user_df):
-
-    traveler = Traveler(user)
-
-    user_trips = []
-
-    for trip in traveler.trips:
-
-        trip_json = ast.literal_eval(trip.to_json())
-
-        blocks_df = pd.DataFrame(trip_json['blocks'])
-
-        trasitions_df = pd.DataFrame(trip_json['transitions'])
-
-        trip_df = pd.json_normalize(trip_json)
-
-        trip_df = trip_df.drop(['blocks', 'transitions'], axis=1)
-
-        ## just a joining id
-        trip_df['join_index'] = 1
-
-        trasitions_df['join_index'] = 1
-
-        transitions_df = trasitions_df.set_index('join_index')
-
-        trip_df = trip_df.set_index('join_index').join(transitions_df, lsuffix='_transition').reset_index(drop=True)
-
-        trip_df = trip_df.join(blocks_df, lsuffix='_blocks')
-
-        user_trip_df = user_df.set_index(['place_name']).join(trip_df.set_index('location_id'), how='right')
-
-        user_trips.append(user_trip_df)
+def identify_user_trips(user_id, max_time_without_checkin=1):
+    """
+        max_time_without_checkin = in days
     
-    if user_trips:
+    """
     
-        return pd.concat(user_trips)
+    user_df = pandas_df[(pandas_df['user_id'] == user_id)]
+    
+    user_city = user_df['user_visited_city'].mode().values[0]
 
-    return []
+    user_df['next_city'] = user_df['user_visited_city'].shift(-1)
+    
+    # removendo as viagens feitas na cidade natal do usuário
+    user_df = user_df[user_df['user_visited_city'] != user_city]
+    
+    user_df['date_shift'] = user_df['date'].shift(-1)
+
+    user_df['date_diff'] = np.abs((user_df['date_shift'].dt.date - user_df['date'].dt.date).dt.days)
+
+    user_df['date_diff'] = user_df['date_diff'].fillna(10)
+    
+    # agora temos para um usuário apenas as viagens que ele fez fora de sua cidade natal
+    
+    # reseto o index pois nós iremos trabalhar com ele
+    user_df = user_df.reset_index()
+
+    if len(user_df) == 1 or user_df['date_diff'].max() == max_time_without_checkin:
+        
+        user_df['trip_id'] = user_df['user_id'] + '_1'
+    
+    else:
+        
+        ## quer dizer que o usuário visitou muitos locais, 
+        ## e que o tempo de diferença foi maior que 1 dia,
+        ## logo nós temos variáveis viagens
+        
+        ## retorna o index onde o tempo sem checkin foi maior que 1
+        # verificar se a próxima visita do usuário foi na sua cidade natal
+        # caso seja, a viagem também acabou
+        
+        
+        ## O INDEX QUE A VIAGEM ACABA
+        index_trip_end = user_df[(user_df['date_diff'] > 1) |
+                                 (user_df['next_city'] == user_city)].index
+
+        # ci - checkin index
+
+        user_df['trip_id'] = user_id
+
+        trip_ids = []
+
+
+        index = 0
+        
+        for (ci) in index_trip_end:
+        
+
+        
+            if index == 0:
+                
+                start_index = user_df.index.min()
+
+                end_index = ci
+            
+            else:
+                
+                start_index = end_index + 1
+                
+                end_index = ci
+
+                
+                
+            user_df.loc[(user_df.index >= start_index) &
+                        (user_df.index <= end_index), 'trip_id'] = user_id + '_' + str(index)
+
+            index += 1
+
+
+    return user_df
 
 
 def mine_users_trips(user):
 
     try:
-        user_obj, user_df = define_user_object(user)
-    
-        user_trips = define_user_trips(user_obj, user_df)
-
-        del user_obj, user_df
+        
+        user_trips = identify_user_trips(user)
 
     except:
 
@@ -121,7 +134,7 @@ pandas_df = pd.read_csv("yelp_users_batches.csv", sep=';')
 
 print("Processamento dos dados!")
 
-pool = Pool(processes=40)
+pool = Pool(processes=50)
 
 mine_function = partial(mine_users_trips)
 
