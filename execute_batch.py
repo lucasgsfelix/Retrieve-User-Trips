@@ -6,6 +6,8 @@ import os
 
 import numpy as np
 
+import subprocess
+
 
 if __name__ == '__main__':
 
@@ -27,6 +29,7 @@ if __name__ == '__main__':
 
 		pandas_df[pandas_df['user_id'].isin(users)].to_csv("yelp_users_batches.csv", sep=';', index=False)
 
-		os.system("retrieve_users_trips.py")
+		
+		subprocess.call("python retrieve_users_trips.py " + str(cut_off), shell=True)
 
 
