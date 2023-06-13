@@ -37,6 +37,8 @@ def identify_user_trips(user_id, max_time_without_checkin=1):
 
     user_df['next_city'] = user_df['user_visited_city'].shift(-1)
     
+    user_df['hometown'] = user_city
+    
     # removendo as viagens feitas na cidade natal do usuário
     user_df = user_df[user_df['user_visited_city'] != user_city]
     
