@@ -10,7 +10,13 @@ if __name__ == '__main__':
 
 	df = df.rename(columns={'latitude': 'home_lat', 'longitude': 'home_lon', 'user_visited_city': 'hometown'})
 
-	df_trips = pd.read_table("user_trips_table.csv", sep=';')
+	df_trips = pd.read_table("users_trips.csv", sep=';')
+
+	df_trips['date'] = pd.to_datetime(df_trips['date'], errors='coerce')
+
+	df_trips = df_trips.dropna(subset=['date'])
+
+	batches = np.array_split(df_trips['user_id'].unique(), 1)
 
 	df = df_trips.set_index('hometown').join(df.set_index('hometown')).reset_index()
 
