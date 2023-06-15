@@ -16,8 +16,6 @@ if __name__ == '__main__':
 
 	df_trips = df_trips.dropna(subset=['date'])
 
-	batches = np.array_split(df_trips['user_id'].unique(), 1)
-
 	df = df_trips.set_index('hometown').join(df.set_index('hometown')).reset_index()
 
 	df.to_csv("user_trips_table_plus_home_geo.csv", sep=';', index=False)
